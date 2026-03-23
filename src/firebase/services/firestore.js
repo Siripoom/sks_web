@@ -8,13 +8,26 @@ import {
   serverTimestamp,
   arrayUnion,
   arrayRemove,
+  Timestamp,
 } from 'firebase/firestore'
 import { db } from '../config'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
+function convertTimestamps(obj) {
+  if (obj === null || obj === undefined) return obj
+  if (obj instanceof Timestamp) return obj.toDate().toISOString()
+  if (Array.isArray(obj)) return obj.map(convertTimestamps)
+  if (typeof obj === 'object') {
+    return Object.fromEntries(
+      Object.entries(obj).map(([k, v]) => [k, convertTimestamps(v)])
+    )
+  }
+  return obj
+}
+
 function snapToDocs(snap) {
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  return snap.docs.map(d => convertTimestamps({ id: d.id, ...d.data() }))
 }
 
 function genId(prefix) {

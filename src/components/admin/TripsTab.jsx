@@ -70,7 +70,13 @@ export default function TripsTab() {
   }
 
   function openEdit(trip) {
-    setForm({ ...EMPTY, ...trip, childIds: trip.childIds || [] })
+    const scheduledStartAt = trip.scheduledStartAt
+      ? trip.scheduledStartAt.substring(0, 16)
+      : ''
+    const serviceDate = trip.serviceDate
+      ? trip.serviceDate.substring(0, 10)
+      : ''
+    setForm({ ...EMPTY, ...trip, childIds: trip.childIds || [], scheduledStartAt, serviceDate })
     setEditTarget(trip)
     setModalOpen(true)
   }
