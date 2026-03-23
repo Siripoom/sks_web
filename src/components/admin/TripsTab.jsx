@@ -157,7 +157,7 @@ export default function TripsTab() {
                 <th className="text-left px-4 py-3 font-semibold text-[#222222] hidden md:table-cell">School</th>
                 <th className="text-left px-4 py-3 font-semibold text-[#222222] hidden md:table-cell">Bus</th>
                 <th className="text-left px-4 py-3 font-semibold text-[#222222] hidden lg:table-cell">Round</th>
-                <th className="text-left px-4 py-3 font-semibold text-[#222222] hidden lg:table-cell">Status</th>
+                {/* <th className="text-left px-4 py-3 font-semibold text-[#222222] hidden lg:table-cell">Status</th> */}
                 <th className="text-right px-4 py-3 font-semibold text-[#222222]">Actions</th>
               </tr>
             </thead>
@@ -177,11 +177,11 @@ export default function TripsTab() {
                   <td className="px-4 py-3 text-[#666666] hidden lg:table-cell">
                     {trip.round === 'toSchool' ? '🏫 To School' : '🏠 To Home'}
                   </td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
+                  {/* <td className="px-4 py-3 hidden lg:table-cell">
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_CFG[trip.status] || STATUS_CFG.draft}`}>
                       {trip.status || 'draft'}
                     </span>
-                  </td>
+                  </td> */}
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => openEdit(trip)}
