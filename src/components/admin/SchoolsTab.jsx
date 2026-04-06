@@ -1,6 +1,12 @@
-import { useState } from 'react'
-import { Pencil, Archive, RotateCcw, X, Building2 } from 'lucide-react'
+import { useState, useCallback, useRef } from 'react'
+import { Pencil, Archive, RotateCcw, X, Building2, MapPin } from 'lucide-react'
+import { GoogleMap, Marker, Autocomplete, useLoadScript } from '@react-google-maps/api'
 import { useAdmin } from '../../context/AdminContext'
+
+const GOOGLE_MAPS_API_KEY = 'AIzaSyCLoX0fwViXdhHDjzq2cOoaawtfpAN_hy4'
+const MAP_LIBRARIES = ['places']
+const BANGKOK_CENTER = { lat: 13.7563, lng: 100.5018 }
+const MAP_CONTAINER_STYLE = { width: '100%', height: '280px', borderRadius: '12px' }
 
 const EMPTY_FORM = {
   id: '', name: '', address: '',
@@ -28,6 +34,73 @@ function LoadingSkeleton() {
   )
 }
 
+function MapPicker({ lat, lng, onPick }) {
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+    libraries: MAP_LIBRARIES,
+  })
+
+  const mapRef = useRef(null)
+  const autocompleteRef = useRef(null)
+  const [mapCenter, setMapCenter] = useState(null)
+
+  const onMapLoad = useCallback(map => { mapRef.current = map }, [])
+
+  const parsedLat = parseFloat(lat)
+  const parsedLng = parseFloat(lng)
+  const hasCoords = !isNaN(parsedLat) && !isNaN(parsedLng)
+  const center = mapCenter ?? (hasCoords ? { lat: parsedLat, lng: parsedLng } : BANGKOK_CENTER)
+
+  function handleClick(e) {
+    onPick(e.latLng.lat().toFixed(6), e.latLng.lng().toFixed(6))
+  }
+
+  function handlePlaceChanged() {
+    const place = autocompleteRef.current.getPlace()
+    if (!place.geometry?.location) return
+    const lat = place.geometry.location.lat()
+    const lng = place.geometry.location.lng()
+    setMapCenter({ lat, lng })
+    mapRef.current?.panTo({ lat, lng })
+    mapRef.current?.setZoom(16)
+    onPick(lat.toFixed(6), lng.toFixed(6))
+  }
+
+  if (loadError) return (
+    <div className="flex items-center justify-center h-[280px] bg-gray-50 rounded-xl text-sm text-red-500">
+      Failed to load map
+    </div>
+  )
+  if (!isLoaded) return (
+    <div className="h-[280px] bg-gray-100 rounded-xl animate-pulse" />
+  )
+
+  return (
+    <div className="space-y-2">
+      <Autocomplete
+        onLoad={ac => { autocompleteRef.current = ac }}
+        onPlaceChanged={handlePlaceChanged}
+      >
+        <input
+          type="text"
+          placeholder="ค้นหาชื่อสถานที่..."
+          className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F98C1F]"
+        />
+      </Autocomplete>
+      <GoogleMap
+        mapContainerStyle={MAP_CONTAINER_STYLE}
+        center={center}
+        zoom={hasCoords ? 15 : 11}
+        onClick={handleClick}
+        onLoad={onMapLoad}
+        options={{ streetViewControl: false, mapTypeControl: false, fullscreenControl: false }}
+      >
+        {hasCoords && <Marker position={{ lat: parsedLat, lng: parsedLng }} />}
+      </GoogleMap>
+    </div>
+  )
+}
+
 export default function SchoolsTab() {
   const { filteredSchools, loading, error, clearError, handleSaveSchool, handleArchiveSchool } = useAdmin()
   const [showArchived, setShowArchived] = useState(false)
@@ -35,27 +108,35 @@ export default function SchoolsTab() {
   const [editTarget, setEditTarget] = useState(null)
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
+  const [showMap, setShowMap] = useState(false)
 
   const visible = filteredSchools.filter(s => showArchived ? s.isArchived : !s.isArchived)
 
   function openCreate() {
     setForm(EMPTY_FORM)
     setEditTarget(null)
+    setShowMap(false)
     setModalOpen(true)
   }
 
   function openEdit(school) {
     setForm({ ...EMPTY_FORM, ...school })
     setEditTarget(school)
+    setShowMap(false)
     setModalOpen(true)
   }
 
   function closeModal() {
     setModalOpen(false)
     setEditTarget(null)
+    setShowMap(false)
   }
 
   const set = field => e => setForm(f => ({ ...f, [field]: e.target.value }))
+
+  function handleMapPick(lat, lng) {
+    setForm(f => ({ ...f, lat, lng }))
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -171,10 +252,32 @@ export default function SchoolsTab() {
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
               <Field label="School Name *" value={form.name} onChange={set('name')} required placeholder="e.g. Bangkok International School" />
               <Field label="Address" value={form.address} onChange={set('address')} placeholder="Full address" />
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Latitude" value={form.lat} onChange={set('lat')} placeholder="13.7563" />
-                <Field label="Longitude" value={form.lng} onChange={set('lng')} placeholder="100.5018" />
+
+              {/* Lat/Lng + Map toggle */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-[#666666]">Location</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowMap(v => !v)}
+                    className="flex items-center gap-1 text-xs text-[#F98C1F] hover:text-[#F57C00] font-medium"
+                  >
+                    <MapPin size={13} />
+                    {showMap ? 'Hide map' : 'Pick on map'}
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Latitude" value={form.lat} onChange={set('lat')} placeholder="13.7563" />
+                  <Field label="Longitude" value={form.lng} onChange={set('lng')} placeholder="100.5018" />
+                </div>
+                {showMap && (
+                  <div className="mt-3">
+                    <MapPicker lat={form.lat} lng={form.lng} onPick={handleMapPick} />
+                    <p className="text-xs text-[#666666] mt-1.5 text-center">คลิกบนแผนที่เพื่อเลือกตำแหน่ง</p>
+                  </div>
+                )}
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Morning Pickup" value={form.morningPickup} onChange={set('morningPickup')} placeholder="07:00" />
                 <Field label="Morning Dropoff" value={form.morningDropoff} onChange={set('morningDropoff')} placeholder="08:00" />

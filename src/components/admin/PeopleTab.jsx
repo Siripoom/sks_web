@@ -282,6 +282,19 @@ export default function PeopleTab() {
                   </select>
                 </Field>
               )}
+              {subtab === 'Drivers' && (
+                <Field label="School *">
+                  <select
+                    value={form.schoolId}
+                    onChange={set('schoolId')}
+                    required
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F98C1F]"
+                  >
+                    <option value="">Select school</option>
+                    {activeSchools.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </Field>
+              )}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={closeModal}
                   className="flex-1 border border-gray-200 rounded-xl py-2.5 text-[#666666] hover:bg-gray-50 text-sm font-medium">
